@@ -96,3 +96,10 @@ def set_bluetooth_profile(new_profile):
                 PULSE.source_output_move(source_output.index, source.index)
 
     return True
+
+
+def listen_for_events(mask, callback):
+    with pulsectl.Pulse("toggle-bt-mode-event") as pulse:
+        pulse.event_mask_set(mask)
+        pulse.event_callback_set(callback)
+        pulse.event_listen()

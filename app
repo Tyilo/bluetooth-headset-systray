@@ -4,7 +4,7 @@ from threading import Thread
 
 import gi
 
-from pulse import get_bluetooth_profile, set_bluetooth_profile
+from pulse import get_bluetooth_profile, set_bluetooth_profile, listen_for_events
 
 gi.require_version("Gtk", "3.0")
 gi.require_version("Notify", "0.7")
@@ -85,6 +85,11 @@ class App:
 
         self.update_status()
 
+        self.updating_profile = False
+
+        self.pulse_event_thread = Thread(target=listen_for_events, args=['all', self.on_pulse_event])
+        self.pulse_event_thread.start()
+
     def run(self):
         Notify.init(self.APPID)
         Gtk.main()
@@ -103,13 +108,17 @@ class App:
                 icon_name = "audio-headset"
         else:
             status = "No profile"
-            icon_name = "audi-speakers"
+            icon_name = "audio-speakers"
 
         self.status_item.set_label(f"Status: {status}")
         menu_item = self.profile_items.get(profile_name, self.no_profile_item)
         self._set_active(menu_item, True)
 
         self.icon.set_icon(icon_name)
+
+    def on_pulse_event(self, event):
+        if not self.updating_profile:
+            self.update_status()
 
     def _set_active(self, menu_item, state):
         handler_id = self.profile_items_handler_ids.get(menu_item)
@@ -124,6 +133,8 @@ class App:
     def change_mode(self, menu_item):
         if menu_item.get_active() == False:
             return
+
+        self.updating_profile = True
 
         self.menu.set_sensitive(False)
         self.icon.set_icon("image-loading")
@@ -142,6 +153,8 @@ class App:
             self.notify(f"Successfully changed profile to {profile_name}.")
         else:
             self.notify(f"Failed to change profile to {profile_name}!")
+
+        self.updating_profile = False
 
     def notify(self, message):
         Notify.Notification.new("Bluetooth audio profile", message).show()
