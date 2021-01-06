@@ -26,12 +26,14 @@ def get_bluetooth_source():
 
 def restart_bluetooth():
     subprocess.run(["sudo", "systemctl", "restart", "bluetooth"])
-    while True:
+    for _ in range(10):
         sink = get_bluetooth_sink()
         if sink:
             return sink
 
         sleep(5)
+
+    return None
 
 
 def get_bluetooth_profile():
@@ -47,6 +49,8 @@ def set_bluetooth_profile(new_profile):
     if not sink:
         print("Bluetooth sink not found, restarting bluetooth service:")
         sink = restart_bluetooth()
+        if not sink:
+            return False
 
     original_profile = sink.proplist["bluetooth.protocol"]
 
@@ -70,6 +74,8 @@ def set_bluetooth_profile(new_profile):
                 restart_bluetooth()
                 sleep(5)
                 sink = get_bluetooth_sink()
+                if not sink:
+                    return False
                 if sink.proplist["bluetooth.protocol"] == new_profile:
                     print("Already changed!!")
                     break
